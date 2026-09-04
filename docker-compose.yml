@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  epidemic-forecast:
+    build: .
+    container_name: epidemic_forecast_app
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # 快取 Hugging Face 模型權重，避免每次重啟重新下載
+      - hf_cache:/root/.cache/huggingface
+
+volumes:
+  hf_cache:

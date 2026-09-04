@@ -1,0 +1,46 @@
+# Python Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# HuggingFace & Torch downloads / cache
+.cache/
+hf_cache/
+*.pt
+*.safetensors
+
+# Streamlit config / cache
+.streamlit/secrets.toml
+
+# Operating System & Editor Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
