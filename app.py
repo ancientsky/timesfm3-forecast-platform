@@ -75,7 +75,7 @@ st.markdown("""
     .main-header {
         font-size: 2.1rem;
         font-weight: 800;
-        background: linear-gradient(90deg, #1E88E5 0%, #7B1FA2 35%, #2E7D32 70%, #E53935 100%);
+        background: linear-gradient(90deg, #42A5F5 0%, #AB47BC 35%, #66BB6A 70%, #EF5350 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.3rem;
@@ -83,38 +83,61 @@ st.markdown("""
     }
     .sub-header {
         font-size: 0.95rem;
-        color: #555;
+        color: var(--text-color, #64748b);
         margin-bottom: 1.0rem;
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
     }
-    .metric-card-tfm {
-        background: #f8f9fa;
+    .metric-card-tfm, .metric-card-prophet, .metric-card-arima {
+        background: var(--secondary-background-color, rgba(128, 128, 128, 0.08));
+        color: var(--text-color, inherit) !important;
+        border: 1px solid rgba(128, 128, 128, 0.22);
         border-radius: 10px;
         padding: 15px 18px;
-        border-left: 5px solid #1E88E5;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         margin-bottom: 10px;
         word-break: break-word;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .metric-card-tfm {
+        border-left: 5px solid #1E88E5 !important;
     }
     .metric-card-prophet {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 15px 18px;
-        border-left: 5px solid #FF9800;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        margin-bottom: 10px;
-        word-break: break-word;
+        border-left: 5px solid #FF9800 !important;
     }
     .metric-card-arima {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 15px 18px;
-        border-left: 5px solid #2E7D32;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        border-left: 5px solid #2E7D32 !important;
+    }
+    .metric-card-tfm h4, .metric-card-prophet h4, .metric-card-arima h4 {
+        color: var(--text-color, inherit) !important;
+        margin-top: 0;
         margin-bottom: 10px;
-        word-break: break-word;
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+    .metric-card-tfm p, .metric-card-prophet p, .metric-card-arima p {
+        color: var(--text-color, inherit) !important;
+        margin-bottom: 6px;
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+    .metric-card-tfm b, .metric-card-prophet b, .metric-card-arima b {
+        color: var(--text-color, inherit) !important;
+    }
+
+    /* System & Theme Dark Mode Explicit Overrides */
+    @media (prefers-color-scheme: dark) {
+        .metric-card-tfm, .metric-card-prophet, .metric-card-arima {
+            background-color: #1e2530 !important;
+            border-color: rgba(255, 255, 255, 0.14) !important;
+            color: #f1f5f9 !important;
+        }
+        .metric-card-tfm h4, .metric-card-prophet h4, .metric-card-arima h4,
+        .metric-card-tfm p, .metric-card-prophet p, .metric-card-arima p,
+        .metric-card-tfm b, .metric-card-prophet b, .metric-card-arima b {
+            color: #f1f5f9 !important;
+        }
     }
     .tag-badge {
         display: inline-block;
@@ -982,8 +1005,8 @@ with tab1:
         customdata=cd_hist,
         mode='lines+markers',
         name=t("trace_history", lang),
-        line=dict(color='#37474F', width=2.5),
-        marker=dict(size=4, color='#37474F'),
+        line=dict(color='#78909C', width=2.5),
+        marker=dict(size=4, color='#78909C'),
         hovertemplate=hist_hover
     ))
 
@@ -1101,7 +1124,7 @@ with tab1:
         line_color="#78909C",
         annotation_text=t("forecast_start_line", lang),
         annotation_position="top left",
-        annotation_font=dict(size=11, color="#546E7A")
+        annotation_font=dict(size=11, color="#90A4AE")
     )
 
     x_axis_title = t("axis_ym", lang) if data_stats.get('is_year_month_converted') else (t("axis_yw", lang) if data_stats['is_year_week_converted'] else t("axis_date", lang))
@@ -1118,7 +1141,9 @@ with tab1:
                 ]),
                 y=1.05,
                 x=0.0,
-                font=dict(size=11)
+                font=dict(size=11),
+                bgcolor="rgba(128, 128, 128, 0.15)",
+                activecolor="rgba(30, 136, 229, 0.35)"
             ),
             rangeslider=dict(visible=False),
             type="date"
@@ -1133,7 +1158,6 @@ with tab1:
             x=0.5,
             font=dict(size=11)
         ),
-        template="plotly_white",
         height=500,
         margin=dict(l=35, r=20, t=35, b=75)
     )
@@ -1244,7 +1268,6 @@ with tab1:
                 yaxis=dict(title=f"{t('unit_cases', lang)} {t('scale_log_suffix', lang) if overlay_log else t('scale_linear_suffix', lang)}"),
                 hovermode="x unified",
                 legend=dict(orientation="h", yanchor="top", y=-0.18, x=0.5, xanchor="center", font=dict(size=11)),
-                template="plotly_white",
                 height=460,
                 margin=dict(l=35, r=20, t=45, b=75)
             )
@@ -1355,10 +1378,9 @@ with tab2:
 
         fig_metric_bar.update_layout(
             title=f"<b>{title_text}</b>",
-            template="plotly_white",
             height=360,
             margin=dict(l=20, r=20, t=50, b=30),
-            yaxis=dict(showgrid=True, gridcolor='#ECEFF1')
+            yaxis=dict(showgrid=True, gridcolor='rgba(128, 128, 128, 0.2)')
         )
         st.plotly_chart(fig_metric_bar, use_container_width=True, config={"responsive": True, "displayModeBar": False})
 

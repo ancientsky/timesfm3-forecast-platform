@@ -116,15 +116,15 @@ def render_loading_card(
     step_pills = ""
     for label, is_done_or_active, is_active in steps:
         if is_active:
-            pill_style = "background: linear-gradient(135deg, #1E88E5, #43A047); color: #fff; font-weight: 700; box-shadow: 0 0 10px rgba(30,136,229,0.5); transform: scale(1.05);"
+            pill_style = "background: linear-gradient(135deg, #1E88E5, #43A047); color: #ffffff !important; font-weight: 700; box-shadow: 0 0 10px rgba(30,136,229,0.5); transform: scale(1.05);"
             dot = "⚡"
         elif is_done_or_active:
-            pill_style = "background: #E8F5E9; color: #2E7D32; font-weight: 600; border: 1px solid #A5D6A7;"
+            pill_style = "background: rgba(46, 125, 50, 0.15); color: #2E7D32; font-weight: 600; border: 1px solid rgba(46, 125, 50, 0.4);"
             dot = "✓"
         else:
-            pill_style = "background: #F5F5F5; color: #9E9E9E; border: 1px solid #E0E0E0;"
+            pill_style = "background: rgba(128, 128, 128, 0.12); color: #9E9E9E; border: 1px solid rgba(128, 128, 128, 0.25);"
             dot = "○"
-        step_pills += f'<div style="padding: 6px 14px; border-radius: 20px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.3s; {pill_style}"><span>{dot}</span><span>{label}</span></div>'
+        step_pills += f'<div style="padding: 6px 14px; border-radius: 20px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.3s; {pill_style}"><span style="color: inherit !important;">{dot}</span><span style="color: inherit !important;">{label}</span></div>'
 
     stage_label = "Current Stage: " if lang == "en" else "當前階段："
     quote_label = "Live AI & Epidemiological Insights: " if lang == "en" else "即時防疫與 AI 小小語錄："
@@ -146,8 +146,9 @@ def render_loading_card(
         100% {{ transform: rotate(360deg); }}
     }}
     .anim-card-container {{
-        background: linear-gradient(145deg, #ffffff 0%, #f8faff 100%);
-        border: 1.5px solid #dbeafe;
+        background: var(--secondary-background-color, #ffffff);
+        border: 1.5px solid rgba(128, 128, 128, 0.2);
+        color: var(--text-color, #1e293b);
         border-radius: 18px;
         padding: 24px;
         margin: 18px 0 28px 0;
@@ -168,8 +169,8 @@ def render_loading_card(
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        background: rgba(30, 136, 229, 0.08);
-        border: 1px solid rgba(30, 136, 229, 0.25);
+        background: rgba(30, 136, 229, 0.12);
+        border: 1px solid rgba(30, 136, 229, 0.3);
         color: {theme_color};
         padding: 5px 14px;
         border-radius: 30px;
@@ -180,15 +181,18 @@ def render_loading_card(
     .anim-step-desc {{
         font-size: 15px;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--text-color, #1e293b) !important;
         display: flex;
         align-items: center;
         gap: 8px;
     }}
+    .anim-step-desc span, .anim-step-desc b {{
+        color: var(--text-color, #1e293b) !important;
+    }}
     .anim-progress-bar {{
         width: 100%;
         height: 6px;
-        background: #e2e8f0;
+        background: rgba(128, 128, 128, 0.2);
         border-radius: 8px;
         overflow: hidden;
         margin: 14px 0;
@@ -205,15 +209,36 @@ def render_loading_card(
     .anim-quote-box {{
         margin-top: 16px;
         padding: 12px 16px;
-        background: rgba(241, 245, 249, 0.7);
+        background: rgba(128, 128, 128, 0.1);
         border-left: 4px solid {theme_color};
         border-radius: 8px;
         font-size: 13.5px;
-        color: #475569;
+        color: var(--text-color, #475569) !important;
         display: flex;
         align-items: center;
         gap: 10px;
         line-height: 1.5;
+    }}
+    .anim-quote-box span, .anim-quote-box b {{
+        color: var(--text-color, #475569) !important;
+    }}
+
+    @media (prefers-color-scheme: dark) {{
+        .anim-card-container {{
+            background: #131a26 !important;
+            border-color: rgba(255, 255, 255, 0.14) !important;
+            color: #f1f5f9 !important;
+        }}
+        .anim-step-desc, .anim-step-desc span, .anim-step-desc b {{
+            color: #f1f5f9 !important;
+        }}
+        .anim-quote-box {{
+            background: rgba(255, 255, 255, 0.07) !important;
+            color: #cbd5e1 !important;
+        }}
+        .anim-quote-box span, .anim-quote-box b {{
+            color: #cbd5e1 !important;
+        }}
     }}
     </style>
 
