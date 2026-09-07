@@ -1,87 +1,63 @@
 """
 Data Processor Module for Epidemic Time Series.
-Supports Taiwan CDC (疾管署) Year-Week (年週, 如 202434) automated detection
-and conversion to week start dates using DIM_CAL calendar mapping,
-as well as standard date parsing, missing value interpolation, and statistics.
+Features:
+1. Exact Taiwan CDC (疾管署) & MMWR EpiWeek mathematical rule engine:
+   - Weeks run Sunday to Saturday.
+   - The week containing Wednesday determines the Epidemiological Year (Week 1 contains Wednesday).
+   - Generates and converts any date <-> year-week for ANY past or future year (infinite year coverage without file expiration).
+2. Automated detection of Taiwan CDC '發病年週' (e.g. '202434', '202501').
+3. Clean preprocessing, frequency inference, missing value interpolation, and epidemiological descriptive statistics.
+4. Capability to auto-generate DIM_CAL calendar dataframe for arbitrary year ranges.
 """
 
 from typing import Tuple, Dict, Any, Optional, List, Union
-from datetime import datetime, timedelta
+import datetime
+from datetime import date, timedelta
 import pandas as pd
 import numpy as np
 import io
 import os
 
-# Cache for DIM_CAL lookup table
-_DIM_CAL_MAP: Optional[Dict[str, str]] = None
-_DATE_TO_YW_MAP: Optional[Dict[str, str]] = None
 
+# ---------------- TAIWAN CDC EPIWEEK MATHEMATICAL ENGINE ----------------
 
-def _load_dim_cal():
-    """Loads DIM_CAL.csv and builds bidirectional Year-Week <-> Week Start Date mappings."""
-    global _DIM_CAL_MAP, _DATE_TO_YW_MAP
-    if _DIM_CAL_MAP is not None:
-        return _DIM_CAL_MAP, _DATE_TO_YW_MAP
-
-    _DIM_CAL_MAP = {}
-    _DATE_TO_YW_MAP = {}
-    cal_path = os.path.join(os.path.dirname(__file__), '..', 'sample_data', 'DIM_CAL.csv')
-
-    if os.path.exists(cal_path):
-        try:
-            df_cal = pd.read_csv(cal_path, dtype=str)
-            # Find the first date (week start date, Sunday) for each Year_Week
-            # Group by Year_Week, take min of CAL_YMD
-            df_grouped = df_cal.groupby('Year_Week')['CAL_YMD'].min().reset_index()
-            for _, row in df_grouped.iterrows():
-                yw = str(row['Year_Week']).strip()
-                ymd = str(row['CAL_YMD']).strip()
-                if len(ymd) == 8:
-                    dt_str = f"{ymd[:4]}-{ymd[4:6]}-{ymd[6:]}"
-                    _DIM_CAL_MAP[yw] = dt_str
-
-            # Also map individual dates to Year_Week
-            for _, row in df_cal.iterrows():
-                ymd = str(row['CAL_YMD']).strip()
-                yw = str(row['Year_Week']).strip()
-                if len(ymd) == 8:
-                    dt_str = f"{ymd[:4]}-{ymd[4:6]}-{ymd[6:]}"
-                    _DATE_TO_YW_MAP[dt_str] = yw
-        except Exception as e:
-            print(f"[data_processor] Failed reading DIM_CAL.csv: {e}")
-
-    return _DIM_CAL_MAP, _DATE_TO_YW_MAP
+def get_cdc_week1_sunday(year: int) -> date:
+    """
+    Returns the Sunday date of Week 1 for a given epidemiological year under Taiwan CDC / MMWR rules:
+    - An epidemiological week begins on Sunday and ends on Saturday.
+    - Week 1 is the week that contains the first Wednesday of that year (or Wednesday of that week is in `year`).
+    """
+    jan1 = date(year, 1, 1)
+    # Days since Sunday: in Python Monday=0...Sunday=6, so (jan1.weekday() + 1) % 7 gives days since Sunday
+    days_since_sun = (jan1.weekday() + 1) % 7
+    sun = jan1 - timedelta(days=days_since_sun)
+    wed = sun + timedelta(days=3)
+    if wed.year == year:
+        return sun
+    else:
+        return sun + timedelta(days=7)
 
 
 def cdc_year_week_to_date(year_week_val: Union[str, int]) -> str:
     """
-    Converts Taiwan CDC Year-Week (e.g. '202434', '202501', 202434) to Week Start Date (Sunday, YYYY-MM-DD).
-    Uses DIM_CAL calendar table with algorithmic MMWR fallback.
+    Converts Taiwan CDC Year-Week (e.g. '202434', '202501', 202434) to Week Start Date (Sunday, 'YYYY-MM-DD').
+    Works for ANY year (no expiration across new year transitions).
     """
-    yw_map, _ = _load_dim_cal()
     raw_str = str(year_week_val).strip()
     clean_str = raw_str.replace('-', '').replace('_', '').replace('W', '')
 
-    # Standardize to 6 digits (e.g. 202401)
     if clean_str.isdigit():
-        if len(clean_str) == 5: # e.g. 20241 -> 202401
+        if len(clean_str) == 5:
             clean_str = f"{clean_str[:4]}0{clean_str[4:]}"
         elif len(clean_str) > 6:
             clean_str = clean_str[:6]
 
-    # 1. Lookup in DIM_CAL
-    if clean_str in yw_map:
-        return yw_map[clean_str]
-
-    # 2. Algorithmic Fallback (CDC MMWR Week standard definition)
     try:
         if len(clean_str) == 6 and clean_str.isdigit():
             year = int(clean_str[:4])
             week = int(clean_str[4:])
-            jan4 = datetime(year, 1, 4)
-            w1_sun_offset = (jan4.weekday() + 1) % 7
-            week1_sunday = jan4 - timedelta(days=w1_sun_offset)
-            target_sunday = week1_sunday + timedelta(weeks=(week - 1))
+            w1_sun = get_cdc_week1_sunday(year)
+            target_sunday = w1_sun + timedelta(days=(week - 1) * 7)
             return target_sunday.strftime('%Y-%m-%d')
     except Exception:
         pass
@@ -89,28 +65,64 @@ def cdc_year_week_to_date(year_week_val: Union[str, int]) -> str:
     return raw_str
 
 
-def date_to_cdc_year_week(dt: pd.Timestamp) -> str:
+def date_to_cdc_year_week(dt_val: Union[datetime.datetime, datetime.date, pd.Timestamp, str]) -> str:
     """
-    Converts a datetime (or Timestamp) to Taiwan CDC Year-Week string (e.g. '202636').
+    Converts any datetime/date to Taiwan CDC Year-Week string (e.g. '202636').
+    Works for ANY year with 100% mathematical fidelity to Taiwan CDC's DIM_CAL standard.
     """
-    _, date_map = _load_dim_cal()
-    dt_str = dt.strftime('%Y-%m-%d')
+    if isinstance(dt_val, str):
+        try:
+            dt = pd.to_datetime(dt_val).date()
+        except Exception:
+            return dt_val
+    elif isinstance(dt_val, pd.Timestamp):
+        dt = dt_val.date()
+    elif isinstance(dt_val, datetime.datetime):
+        dt = dt_val.date()
+    else:
+        dt = dt_val
 
-    if dt_str in date_map:
-        return date_map[dt_str]
-
-    # Algorithmic MMWR calculation
-    sun_offset = (dt.weekday() + 1) % 7
-    sunday = dt - timedelta(days=sun_offset)
+    # Find the Sunday of the current week
+    days_since_sun = (dt.weekday() + 1) % 7
+    sunday = dt - timedelta(days=days_since_sun)
+    # Wednesday determines the epidemiological year
     wednesday = sunday + timedelta(days=3)
-    year = wednesday.year
+    epi_year = wednesday.year
 
-    jan4 = datetime(year, 1, 4)
-    w1_sun_offset = (jan4.weekday() + 1) % 7
-    week1_sunday = jan4 - timedelta(days=w1_sun_offset)
+    w1_sun = get_cdc_week1_sunday(epi_year)
+    week_num = ((sunday - w1_sun).days // 7) + 1
+    return f"{epi_year}{week_num:02d}"
 
-    week = (sunday - week1_sunday).days // 7 + 1
-    return f"{year}{week:02d}"
+
+def generate_dim_cal_dataframe(start_year: int = 2007, end_year: int = 2035) -> pd.DataFrame:
+    """
+    Generates a full Taiwan CDC calendar mapping DataFrame matching DIM_CAL.csv format.
+    Columns: CAL_YMD (int), CAL_YEAR (int), CAL_WEEK (int), Year_Week (int).
+    Can be used to generate calendar files for any arbitrary future year (e.g. 2026-2050).
+    """
+    records = []
+    curr = date(start_year, 1, 1)
+    end_date = date(end_year, 12, 31)
+
+    while curr <= end_date:
+        cal_ymd = int(curr.strftime('%Y%m%d'))
+        days_since_sun = (curr.weekday() + 1) % 7
+        sunday = curr - timedelta(days=days_since_sun)
+        wednesday = sunday + timedelta(days=3)
+        epi_year = wednesday.year
+        w1_sun = get_cdc_week1_sunday(epi_year)
+        week_num = ((sunday - w1_sun).days // 7) + 1
+        yw_int = epi_year * 100 + week_num
+
+        records.append({
+            'CAL_YMD': cal_ymd,
+            'CAL_YEAR': epi_year,
+            'CAL_WEEK': week_num,
+            'Year_Week': yw_int
+        })
+        curr += timedelta(days=1)
+
+    return pd.DataFrame(records)
 
 
 def is_year_week_series(series: pd.Series) -> bool:
@@ -132,6 +144,8 @@ def is_year_week_series(series: pd.Series) -> bool:
 
     return (match_count / len(non_null)) >= 0.7
 
+
+# ---------------- DATASET LOADING & DETECTION ----------------
 
 def load_dataset(file_obj_or_path) -> pd.DataFrame:
     """Loads dataset from file object, path, or bytes (CSV/Excel/JSON)."""
@@ -171,7 +185,7 @@ def detect_columns(df: pd.DataFrame) -> Tuple[Optional[str], Optional[str], List
     date_candidates = [
         '發病年週', '年週', 'year_week', 'yearweek', 'epiweek', 'week',
         'date', 'time', 'datetime', 'day', 'month', 'year',
-        '日期', '時間', '週次', '年週', '月份', '監測日期', '通報日期'
+        '日期', '時間', '週次', '月份', '監測日期', '通報日期'
     ]
     target_candidates = [
         '確定病例數', '確診病例數', 'case', 'cases', 'confirmed', 'count', 'value', 'target', 'y', 'rate',
@@ -214,7 +228,6 @@ def detect_columns(df: pd.DataFrame) -> Tuple[Optional[str], Optional[str], List
             except Exception:
                 continue
 
-    # If target not found by keyword, pick first numeric column
     if detected_target is None:
         for col in all_cols:
             if col == detected_date:
@@ -268,8 +281,9 @@ def prepare_epidemic_data(
     """
     Preprocesses epidemic dataframe:
     - Auto-detects and converts Taiwan CDC Year-Week ('發病年週', 如 202434) to Week Start Date (週日)
-    - Converts target values to float and interpolates missing values
-    - Calculates epidemiology statistics
+      using exact mathematical EpiWeek rules (works indefinitely across new years).
+    - Converts target values to non-negative floats and interpolates missing values.
+    - Calculates epidemiology statistics.
     """
     clean_df = pd.DataFrame()
     raw_date_series = df[date_col].copy()
@@ -295,13 +309,13 @@ def prepare_epidemic_data(
     # Drop rows with invalid dates and sort chronologically
     clean_df = clean_df.dropna(subset=['ds']).sort_values('ds').reset_index(drop=True)
 
-    # If Year-Week column is present, also populate reverse for non-year-week series
+    # Populate reverse Year-Week for non-year-week series
     if not converted_year_week:
         clean_df['year_week'] = clean_df['ds'].apply(date_to_cdc_year_week)
 
     # Handle missing target values with linear interpolation
     clean_df['y'] = clean_df['y'].interpolate(method='linear').bfill().ffill()
-    clean_df['y'] = np.maximum(clean_df['y'].values, 0.0) # Epidemic counts >= 0
+    clean_df['y'] = np.maximum(clean_df['y'].values, 0.0)
 
     inferred_freq = ('W' if is_yw else infer_frequency(clean_df['ds'])) if override_freq is None else override_freq
 
@@ -368,3 +382,13 @@ def future_dates_to_year_weeks(future_dates: List[Union[str, pd.Timestamp]]) -> 
         ts = pd.to_datetime(d)
         res.append(date_to_cdc_year_week(ts))
     return res
+
+
+if __name__ == '__main__':
+    # CLI utility: generate updated DIM_CAL.csv up to 2050
+    import sys
+    print("Generating Taiwan CDC DIM_CAL calendar table (2007-2050)...")
+    df_new_cal = generate_dim_cal_dataframe(2007, 2050)
+    out_path = os.path.join(os.path.dirname(__file__), '..', 'sample_data', 'DIM_CAL.csv')
+    df_new_cal.to_csv(out_path, index=False)
+    print(f"Successfully generated and saved {len(df_new_cal)} rows to {out_path}!")
