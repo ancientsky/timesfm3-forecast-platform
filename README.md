@@ -172,12 +172,12 @@ timesfm3/
 │   ├── data_processor.py       # 疾管署 EpiWeek 數學規則引擎、資料前處理與曆表產生器
 │   └── metrics.py              # MAE/RMSE/MAPE/峰值誤差評估矩陣
 └── sample_data/
-    ├── cdc_dengue_year_week.csv # 疾管署發病年週登革熱範例 (202434~202635)
+    ├── scrub_typhus_monthly.csv # 恙蟲病確定病例發病月趨勢範例 (200001~202612)
     ├── DIM_CAL.csv             # 疾管署歷年年週與日期對照表 (2007~2050)
     ├── dengue_weekly.csv       # 登革熱每週確診範例
     ├── covid19_daily.csv       # COVID-19 每日新增確診範例
     ├── flu_weekly.csv          # 流感/類流感每週門急診人次範例
-    └── enterovirus_weekly.csv  # 腸病毒每週急診趨勢範例
+    └── enterovirus_weekly.csv  # 腸病毒每週門急診人次範例 (201601~202635)
 ```
 
 ---
