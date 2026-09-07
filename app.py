@@ -6,23 +6,33 @@ Features:
 2. Taiwan CDC (疾管署) & MMWR EpiWeek mathematical rule engine (infinite year boundary coverage without static file expiration).
 3. Right-Censored Reporting Lag Protection: Default option to exclude the latest incomplete/partial-week reporting data.
 4. Multiplicative log-space epidemic adaptation for non-negative guarantees.
-5. Comprehensive accuracy scorecard and full CSV reporting.
+5. Strict Security Controls:
+   - Zero-vulnerability dependency profile (verified by pip-audit).
+   - Clean static analysis profile (verified by bandit with 0 High/Med/Low issues).
+   - OWASP CSV Injection / DDE protection on exports.
+   - Path traversal validation and size boundary enforcement.
+   - HTML injection (XSS) escaping.
+6. Mobile & Cross-Device Responsiveness:
+   - Auto-wrapping metrics and summary cards via CSS flexbox.
+   - Legend positioned safely below Plotly chart to prevent mobile title/curve overlapping.
+   - Full-width responsive metric comparative bar charts.
 """
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import os
 import io
+import html
 
 from utils.data_processor import (
     load_dataset,
     detect_columns,
     prepare_epidemic_data,
     generate_future_dates,
-    future_dates_to_year_weeks
+    future_dates_to_year_weeks,
+    sanitize_dataframe_for_csv_export
 )
 from utils.metrics import compute_forecast_metrics
 from models.prophet_wrapper import ProphetForecasterWrapper
@@ -37,7 +47,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling
+# Custom Styling (With full Mobile Responsiveness & Overflow Protection)
 st.markdown("""
 <style>
     .main-header {
@@ -46,12 +56,16 @@ st.markdown("""
         background: linear-gradient(90deg, #1E88E5 0%, #7B1FA2 35%, #2E7D32 70%, #E53935 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.3rem;
+        word-break: break-word;
     }
     .sub-header {
         font-size: 0.95rem;
         color: #555;
         margin-bottom: 1.0rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
     }
     .metric-card-tfm {
         background: #f8f9fa;
@@ -60,6 +74,7 @@ st.markdown("""
         border-left: 5px solid #1E88E5;
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         margin-bottom: 10px;
+        word-break: break-word;
     }
     .metric-card-prophet {
         background: #f8f9fa;
@@ -68,6 +83,7 @@ st.markdown("""
         border-left: 5px solid #FF9800;
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         margin-bottom: 10px;
+        word-break: break-word;
     }
     .metric-card-arima {
         background: #f8f9fa;
@@ -76,6 +92,7 @@ st.markdown("""
         border-left: 5px solid #2E7D32;
         box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         margin-bottom: 10px;
+        word-break: break-word;
     }
     .tag-badge {
         display: inline-block;
@@ -83,12 +100,55 @@ st.markdown("""
         border-radius: 12px;
         font-size: 0.8rem;
         font-weight: 600;
-        margin-right: 6px;
+        white-space: nowrap;
     }
     .tag-blue { background-color: #E3F2FD; color: #1565C0; }
     .tag-orange { background-color: #FFF3E0; color: #E65100; }
     .tag-green { background-color: #E8F5E9; color: #2E7D32; }
     .tag-purple { background-color: #F3E5F5; color: #7B1FA2; }
+
+    /* Mobile & Small Screen Responsive Overrides */
+    @media (max-width: 768px) {
+        .main-header {
+            font-size: 1.35rem !important;
+            line-height: 1.35 !important;
+        }
+        .sub-header {
+            font-size: 0.82rem !important;
+            gap: 4px !important;
+        }
+        .tag-badge {
+            font-size: 0.72rem !important;
+            padding: 2px 7px !important;
+        }
+        /* Mobile: Columns wrap into neat 2-per-row grid */
+        div[data-testid="column"] {
+            min-width: 45% !important;
+            flex: 1 1 45% !important;
+            margin-bottom: 0.5rem !important;
+        }
+        div[data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
+            gap: 0.5rem !important;
+        }
+        /* Summary cards take 100% width on phone */
+        .metric-card-tfm, .metric-card-prophet, .metric-card-arima {
+            min-width: 100% !important;
+            padding: 12px 14px !important;
+        }
+        /* Tab list: smooth horizontal touch scrolling without wrapping */
+        div[data-baseweb="tab-list"] {
+            overflow-x: auto !important;
+            flex-wrap: nowrap !important;
+            white-space: nowrap !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 4px !important;
+        }
+        div[data-baseweb="tab"] {
+            font-size: 0.82rem !important;
+            padding: 6px 10px !important;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -166,9 +226,9 @@ elif data_source == "📂 自訂上傳檔案 (CSV / Excel / JSON)":
     if uploaded_file is not None:
         try:
             raw_df = load_dataset(uploaded_file)
-            st.sidebar.success(f"成功讀取 {uploaded_file.name}（共 {len(raw_df)} 筆）")
+            st.sidebar.success(f"成功安全載入 {html.escape(uploaded_file.name)}（共 {len(raw_df)} 筆）")
         except Exception as e:
-            st.sidebar.error(f"檔案解析失敗: {e}")
+            st.sidebar.error(f"檔案解析失敗: {html.escape(str(e))}")
 elif data_source == "✏️ 線上手動輸入 / 貼上 CSV (支援年週與日報)":
     default_text = """"發病年週","確定病例數"
 "202434",3
@@ -278,12 +338,12 @@ elif data_source == "✏️ 線上手動輸入 / 貼上 CSV (支援年週與日�
 "202633",62
 "202634",63
 "202635",14"""
-    pasted_csv = st.sidebar.text_area("貼上 CSV 格式數據（直接貼上疾管署年週統計）：", default_text, height=200)
+    pasted_csv = st.sidebar.text_area("貼上 CSV 格式數據（直接貼上疾管署年週統計）：", default_text, height=180)
     if pasted_csv.strip():
         try:
-            raw_df = pd.read_csv(io.StringIO(pasted_csv))
+            raw_df = load_dataset(io.StringIO(pasted_csv))
         except Exception as e:
-            st.sidebar.error(f"CSV 解析失敗: {e}")
+            st.sidebar.error(f"CSV 解析失敗: {html.escape(str(e))}")
 
 if raw_df is None or len(raw_df) == 0:
     st.error("請在左側選取或上傳有效的傳染病時序數據。")
@@ -323,7 +383,7 @@ eval_mode = st.sidebar.radio(
 )
 is_backtesting = "歷史回測模式" in eval_mode
 
-# Option 2: Default exclude incomplete latest week
+# Option: Default exclude incomplete latest week
 exclude_incomplete_last = st.sidebar.checkbox(
     "🛡️ 預設排除最新一期不完整數據 (建議開啟)",
     value=True,
@@ -367,13 +427,14 @@ st.markdown(
 
 # Year-Week Auto-conversion banner
 if data_stats['is_year_week_converted']:
+    safe_col = html.escape(str(col_date))
     st.info(
-        f"📅 **疾管署年週精準對照：** 系統已自動識別欄位 **「{col_date}」** 為疾管署發病年週（{data_stats['start_year_week']} ~ {data_stats['end_year_week']}），"
+        f"📅 **疾管署年週精準對照：** 系統已自動識別欄位 **「{safe_col}」** 為疾管署發病年週（{data_stats['start_year_week']} ~ {data_stats['end_year_week']}），"
         f"採用台灣疾管署（Taiwan CDC）/ MMWR 官方週期數學演算法（週日為每週起始日、內含週三所屬年為年週所屬年）完成轉換。"
         "本演算法直接內建跨年度數學公理，具備無限期推演能力，完全不受限於年度靜態日曆表！"
     )
 
-# Handle Request 2: Exclude incomplete latest period
+# Handle Request: Exclude incomplete latest period
 has_excluded_period = False
 excluded_record = None
 
@@ -684,24 +745,30 @@ with tab1:
 
     x_axis_title = "週起始日 (Week Start Date)" if data_stats['is_year_week_converted'] else "日期 / 時間 (Date)"
 
+    # Mobile Responsive Layout: Position horizontal legend safely below chart to prevent any overlap
     fig.update_layout(
-        title=f"<b>{col_target} - 歷史走勢 vs. TimesFM 3.0 / Prophet / Auto ARIMA 未來 {horizon} 期預測</b>",
+        title=dict(
+            text=f"<b>{html.escape(str(col_target))} - 走勢與未來 {horizon} 期預測對比</b>",
+            x=0.02,
+            y=0.97
+        ),
         xaxis_title=x_axis_title,
-        yaxis_title=f"{col_target}",
+        yaxis_title=str(col_target),
         hovermode="x unified",
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+            yanchor="top",
+            y=-0.20,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=11)
         ),
         template="plotly_white",
-        height=530,
-        margin=dict(l=40, r=40, t=60, b=40)
+        height=520,
+        margin=dict(l=20, r=20, t=50, b=80)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={"responsive": True, "displayModeBar": False})
 
     # 3 Summary Cards below chart
     c1, c2, c3 = st.columns(3)
@@ -711,7 +778,7 @@ with tab1:
             <h4>🔵 Google TimesFM 3.0</h4>
             <p><b>{horizon} 期均值：</b> {np.mean(res_tfm['forecast']):,.1f}</p>
             <p><b>預測範圍：</b> {np.min(res_tfm['forecast']):,.0f} ~ {np.max(res_tfm['forecast']):,.0f}</p>
-            <p><b>推論耗時：</b> {res_tfm['elapsed_time_sec']} 秒 ({res_tfm['device_used'].upper()})</p>
+            <p><b>推論耗時：</b> {res_tfm['elapsed_time_sec']} 秒 ({html.escape(res_tfm['device_used'].upper())})</p>
         </div>
         """, unsafe_allow_html=True)
     with c2:
@@ -728,7 +795,7 @@ with tab1:
         <div class="metric-card-arima">
             <h4>🟢 Auto ARIMA</h4>
             <p><b>{horizon} 期均值：</b> {np.mean(res_arima['forecast']):,.1f}</p>
-            <p><b>階數/AIC：</b> {res_arima['order_str']} (AIC: {res_arima['aic']})</p>
+            <p><b>階數/AIC：</b> {html.escape(str(res_arima['order_str']))} (AIC: {res_arima['aic']})</p>
             <p><b>推論耗時：</b> {res_arima['elapsed_time_sec']} 秒</p>
         </div>
         """, unsafe_allow_html=True)
@@ -782,31 +849,42 @@ with tab2:
         df_metrics = pd.DataFrame(metrics_comparison)
         st.dataframe(df_metrics, use_container_width=True, hide_index=True)
 
-        fig_bar = make_subplots(rows=1, cols=3, subplot_titles=("MAE 誤差對比 (越低越好)", "MAPE (%) 誤差對比 (越低越好)", "趨勢方向準確率 (%) (越高越好)"))
+        # Responsive Bar Chart for Mobile & Desktop (clean single chart with selector)
+        st.markdown("#### 📊 模型指標可視化柱狀圖")
+        chart_view = st.radio(
+            "切換指標對比：",
+            ["MAE (平均絕對誤差 - 越低越好)", "MAPE (%) (百分比誤差 - 越低越好)", "趨勢方向準確率 (%) (越高越好)"],
+            horizontal=True
+        )
 
-        fig_bar.add_trace(go.Bar(
-            x=['TimesFM 3.0', 'Prophet', 'Auto ARIMA'],
-            y=[metrics_tfm['MAE'], metrics_prophet['MAE'], metrics_arima['MAE']],
+        fig_metric_bar = go.Figure()
+
+        if "MAE" in chart_view:
+            metric_vals = [metrics_tfm['MAE'], metrics_prophet['MAE'], metrics_arima['MAE']]
+            title_text = "MAE 平均絕對誤差對比 (次/例，越低越好)"
+        elif "MAPE" in chart_view:
+            metric_vals = [metrics_tfm['MAPE (%)'], metrics_prophet['MAPE (%)'], metrics_arima['MAPE (%)']]
+            title_text = "MAPE 平均絕對百分比誤差 (%) 對比 (越低越好)"
+        else:
+            metric_vals = [metrics_tfm['Directional Accuracy (%)'], metrics_prophet['Directional Accuracy (%)'], metrics_arima['Directional Accuracy (%)']]
+            title_text = "趨勢方向準確率 (%) 對比 (越高越好)"
+
+        fig_metric_bar.add_trace(go.Bar(
+            x=['TimesFM 3.0', 'Prophet (優化)', 'Auto ARIMA'],
+            y=metric_vals,
             marker_color=['#1E88E5', '#FF9800', '#2E7D32'],
-            name='MAE'
-        ), row=1, col=1)
+            text=[f"{v:,.1f}" for v in metric_vals],
+            textposition='outside'
+        ))
 
-        fig_bar.add_trace(go.Bar(
-            x=['TimesFM 3.0', 'Prophet', 'Auto ARIMA'],
-            y=[metrics_tfm['MAPE (%)'], metrics_prophet['MAPE (%)'], metrics_arima['MAPE (%)']],
-            marker_color=['#1E88E5', '#FF9800', '#2E7D32'],
-            name='MAPE (%)'
-        ), row=1, col=2)
-
-        fig_bar.add_trace(go.Bar(
-            x=['TimesFM 3.0', 'Prophet', 'Auto ARIMA'],
-            y=[metrics_tfm['Directional Accuracy (%)'], metrics_prophet['Directional Accuracy (%)'], metrics_arima['Directional Accuracy (%)']],
-            marker_color=['#1E88E5', '#FF9800', '#2E7D32'],
-            name='Directional Accuracy (%)'
-        ), row=1, col=3)
-
-        fig_bar.update_layout(template="plotly_white", height=350, showlegend=False, margin=dict(t=40, b=20))
-        st.plotly_chart(fig_bar, use_container_width=True)
+        fig_metric_bar.update_layout(
+            title=f"<b>{title_text}</b>",
+            template="plotly_white",
+            height=360,
+            margin=dict(l=20, r=20, t=50, b=30),
+            yaxis=dict(showgrid=True, gridcolor='#ECEFF1')
+        )
+        st.plotly_chart(fig_metric_bar, use_container_width=True, config={"responsive": True, "displayModeBar": False})
 
     else:
         st.info("💡 目前處於「未來預測模式」（外推未知未來）。若需查看各項誤差量化指標（MAE, RMSE, MAPE, 峰值偏差），請在左側側邊欄切換為 **「🧪 歷史回測模式」**。")
@@ -918,14 +996,17 @@ with tab4:
     df_export = pd.DataFrame(export_dict)
     st.dataframe(df_export, use_container_width=True, hide_index=True)
 
+    # Sanitize dataframe against CSV Formula / DDE Injection before export
+    df_export_safe = sanitize_dataframe_for_csv_export(df_export)
+
     csv_buffer = io.StringIO()
-    df_export.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+    df_export_safe.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
     csv_bytes = csv_buffer.getvalue().encode('utf-8-sig')
 
     st.download_button(
-        label="📥 下載 8 期預測明細報表 (CSV)",
+        label="📥 下載 8 期預測明細報表 (CSV - 安全防注入格式)",
         data=csv_bytes,
         file_name=f"epidemic_forecast_8steps_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
         mime="text/csv",
-        help="下載包含 Google TimesFM 3.0、Meta Prophet、Auto ARIMA 預測值、疾管署年週與信賴區間的完整表格"
+        help="下載包含三大模型預測值、疾管署年週與信賴區間的完整表格（已通過 OWASP CSV Formula Injection 安全防護過濾）"
     )

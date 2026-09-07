@@ -6,8 +6,11 @@ Features:
    - The week containing Wednesday determines the Epidemiological Year (Week 1 contains Wednesday).
    - Generates and converts any date <-> year-week for ANY past or future year (infinite year coverage without file expiration).
 2. Automated detection of Taiwan CDC '發病年週' (e.g. '202434', '202501').
-3. Clean preprocessing, frequency inference, missing value interpolation, and epidemiological descriptive statistics.
-4. Capability to auto-generate DIM_CAL calendar dataframe for arbitrary year ranges.
+3. Strict security controls:
+   - Path traversal prevention on local file loading.
+   - Row limit and size enforcement to prevent Denial of Service (DoS).
+   - CSV formula injection (DDE) sanitization for secure report exports.
+4. Clean preprocessing, frequency inference, missing value interpolation, and epidemiology statistics.
 """
 
 from typing import Tuple, Dict, Any, Optional, List, Union
@@ -17,6 +20,54 @@ import pandas as pd
 import numpy as np
 import io
 import os
+import re
+
+MAX_ALLOWABLE_ROWS = 100000
+MAX_ALLOWABLE_BYTES = 50 * 1024 * 1024 # 50 MB
+ALLOWED_BASE_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
+
+
+# ---------------- SECURITY SANITIZATION UTILITIES ----------------
+
+def validate_safe_path(filepath: str) -> str:
+    """
+    Validates that a requested file path resolves safely within the project workspace.
+    Prevents directory traversal (Path Traversal / Local File Inclusion).
+    """
+    real_path = os.path.realpath(filepath)
+    # Check if the resolved path starts with the allowed workspace base directory
+    try:
+        common = os.path.commonpath([real_path, ALLOWED_BASE_DIR])
+        if common != ALLOWED_BASE_DIR:
+            raise PermissionError(f"Security Alert: Path traversal attempt detected outside workspace: '{filepath}'")
+    except ValueError:
+        raise PermissionError(f"Security Alert: Invalid path traversal detected: '{filepath}'")
+
+    if not os.path.exists(real_path):
+        raise FileNotFoundError(f"File not found: {filepath}")
+
+    # Check file size
+    if os.path.getsize(real_path) > MAX_ALLOWABLE_BYTES:
+        raise ValueError(f"File size exceeds allowable maximum of {MAX_ALLOWABLE_BYTES / (1024*1024):.0f}MB.")
+
+    return real_path
+
+
+def sanitize_dataframe_for_csv_export(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Sanitizes string cells in a dataframe before exporting to CSV.
+    Prevents CSV Formula Injection / Dynamic Data Exchange (DDE) attacks
+    in Microsoft Excel, LibreOffice Calc, or Google Sheets (OWASP CSV Injection).
+    """
+    clean_df = df.copy()
+    dangerous_prefixes = ('=', '+', '-', '@', '\t', '\r')
+
+    for col in clean_df.columns:
+        if clean_df[col].dtype == object or pd.api.types.is_string_dtype(clean_df[col]):
+            clean_df[col] = clean_df[col].apply(
+                lambda val: f"'{val}" if isinstance(val, str) and val.startswith(dangerous_prefixes) else val
+            )
+    return clean_df
 
 
 # ---------------- TAIWAN CDC EPIWEEK MATHEMATICAL ENGINE ----------------
@@ -28,7 +79,6 @@ def get_cdc_week1_sunday(year: int) -> date:
     - Week 1 is the week that contains the first Wednesday of that year (or Wednesday of that week is in `year`).
     """
     jan1 = date(year, 1, 1)
-    # Days since Sunday: in Python Monday=0...Sunday=6, so (jan1.weekday() + 1) % 7 gives days since Sunday
     days_since_sun = (jan1.weekday() + 1) % 7
     sun = jan1 - timedelta(days=days_since_sun)
     wed = sun + timedelta(days=3)
@@ -52,15 +102,15 @@ def cdc_year_week_to_date(year_week_val: Union[str, int]) -> str:
         elif len(clean_str) > 6:
             clean_str = clean_str[:6]
 
-    try:
-        if len(clean_str) == 6 and clean_str.isdigit():
+    if len(clean_str) == 6 and clean_str.isdigit():
+        try:
             year = int(clean_str[:4])
             week = int(clean_str[4:])
             w1_sun = get_cdc_week1_sunday(year)
             target_sunday = w1_sun + timedelta(days=(week - 1) * 7)
             return target_sunday.strftime('%Y-%m-%d')
-    except Exception:
-        pass
+        except (ValueError, OverflowError):
+            return raw_str
 
     return raw_str
 
@@ -73,8 +123,8 @@ def date_to_cdc_year_week(dt_val: Union[datetime.datetime, datetime.date, pd.Tim
     if isinstance(dt_val, str):
         try:
             dt = pd.to_datetime(dt_val).date()
-        except Exception:
-            return dt_val
+        except (ValueError, TypeError, pd.errors.ParserError):
+            return str(dt_val)
     elif isinstance(dt_val, pd.Timestamp):
         dt = dt_val.date()
     elif isinstance(dt_val, datetime.datetime):
@@ -137,10 +187,13 @@ def is_year_week_series(series: pd.Series) -> bool:
     for val in non_null:
         v_str = str(val).strip().replace('-', '').replace('_', '').replace('W', '')
         if v_str.isdigit() and len(v_str) in [5, 6]:
-            year = int(v_str[:4])
-            week = int(v_str[4:])
-            if 1990 <= year <= 2099 and 1 <= week <= 53:
-                match_count += 1
+            try:
+                year = int(v_str[:4])
+                week = int(v_str[4:])
+                if 1990 <= year <= 2099 and 1 <= week <= 53:
+                    match_count += 1
+            except ValueError:
+                continue
 
     return (match_count / len(non_null)) >= 0.7
 
@@ -148,32 +201,47 @@ def is_year_week_series(series: pd.Series) -> bool:
 # ---------------- DATASET LOADING & DETECTION ----------------
 
 def load_dataset(file_obj_or_path) -> pd.DataFrame:
-    """Loads dataset from file object, path, or bytes (CSV/Excel/JSON)."""
+    """
+    Safely loads dataset from file object, path, or bytes (CSV/Excel/JSON).
+    Includes path traversal validation and size boundaries.
+    """
+    df = None
     if isinstance(file_obj_or_path, str):
-        if file_obj_or_path.endswith('.csv'):
-            return pd.read_csv(file_obj_or_path)
-        elif file_obj_or_path.endswith(('.xlsx', '.xls')):
-            return pd.read_excel(file_obj_or_path)
-        elif file_obj_or_path.endswith('.json'):
-            return pd.read_json(file_obj_or_path)
+        safe_path = validate_safe_path(file_obj_or_path)
+        if safe_path.endswith('.csv'):
+            df = pd.read_csv(safe_path)
+        elif safe_path.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(safe_path)
+        elif safe_path.endswith('.json'):
+            df = pd.read_json(safe_path)
         else:
-            return pd.read_csv(file_obj_or_path)
+            df = pd.read_csv(safe_path)
     elif hasattr(file_obj_or_path, 'name'):
+        # Streamlit UploadedFile object
+        if hasattr(file_obj_or_path, 'size') and file_obj_or_path.size > MAX_ALLOWABLE_BYTES:
+            raise ValueError(f"Uploaded file exceeds {MAX_ALLOWABLE_BYTES / (1024*1024):.0f}MB limit.")
         name = file_obj_or_path.name.lower()
         if name.endswith('.csv'):
-            return pd.read_csv(file_obj_or_path)
+            df = pd.read_csv(file_obj_or_path)
         elif name.endswith(('.xlsx', '.xls')):
-            return pd.read_excel(file_obj_or_path)
+            df = pd.read_excel(file_obj_or_path)
         elif name.endswith('.json'):
-            return pd.read_json(file_obj_or_path)
+            df = pd.read_json(file_obj_or_path)
         else:
-            return pd.read_csv(file_obj_or_path)
+            df = pd.read_csv(file_obj_or_path)
     elif isinstance(file_obj_or_path, (bytes, bytearray)):
-        return pd.read_csv(io.BytesIO(file_obj_or_path))
+        if len(file_obj_or_path) > MAX_ALLOWABLE_BYTES:
+            raise ValueError("Input data stream exceeds allowable size limit.")
+        df = pd.read_csv(io.BytesIO(file_obj_or_path))
     elif isinstance(file_obj_or_path, pd.DataFrame):
-        return file_obj_or_path.copy()
+        df = file_obj_or_path.copy()
     else:
         raise ValueError("Unsupported data source format.")
+
+    if len(df) > MAX_ALLOWABLE_ROWS:
+        raise ValueError(f"Dataset contains {len(df):,} rows, exceeding maximum limit of {MAX_ALLOWABLE_ROWS:,} rows.")
+
+    return df
 
 
 def detect_columns(df: pd.DataFrame) -> Tuple[Optional[str], Optional[str], List[str]]:
@@ -212,7 +280,7 @@ def detect_columns(df: pd.DataFrame) -> Tuple[Optional[str], Optional[str], List
                 pd.to_datetime(df[col].dropna().head(5), format='mixed')
                 detected_date = col
                 break
-            except Exception:
+            except (ValueError, TypeError, pd.errors.ParserError):
                 continue
 
     # Find target numeric column
@@ -225,7 +293,7 @@ def detect_columns(df: pd.DataFrame) -> Tuple[Optional[str], Optional[str], List
                 pd.to_numeric(df[col].dropna().head(5))
                 detected_target = col
                 break
-            except Exception:
+            except (ValueError, TypeError):
                 continue
 
     if detected_target is None:
@@ -240,7 +308,7 @@ def detect_columns(df: pd.DataFrame) -> Tuple[Optional[str], Optional[str], List
                     pd.to_numeric(df[col].dropna().head(5))
                     detected_target = col
                     break
-                except Exception:
+                except (ValueError, TypeError):
                     continue
 
     if detected_date is None and len(all_cols) > 0:
@@ -300,7 +368,7 @@ def prepare_epidemic_data(
         clean_df['year_week'] = None
         try:
             clean_df['ds'] = pd.to_datetime(raw_date_series, format='mixed', errors='coerce')
-        except Exception:
+        except (ValueError, TypeError, pd.errors.ParserError):
             clean_df['ds'] = pd.to_datetime(raw_date_series, errors='coerce')
         converted_year_week = False
 
@@ -385,8 +453,6 @@ def future_dates_to_year_weeks(future_dates: List[Union[str, pd.Timestamp]]) -> 
 
 
 if __name__ == '__main__':
-    # CLI utility: generate updated DIM_CAL.csv up to 2050
-    import sys
     print("Generating Taiwan CDC DIM_CAL calendar table (2007-2050)...")
     df_new_cal = generate_dim_cal_dataframe(2007, 2050)
     out_path = os.path.join(os.path.dirname(__file__), '..', 'sample_data', 'DIM_CAL.csv')
