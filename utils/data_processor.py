@@ -459,36 +459,116 @@ def load_dataset(file_obj_or_path) -> pd.DataFrame:
     Safely loads dataset from file object, path, or bytes (CSV/Excel/JSON).
     Includes path traversal validation and size boundaries.
     """
+def _read_csv_smart(target) -> pd.DataFrame:
+    """Helper to parse CSV or TSV with delimiter auto-detection and fallback."""
+    try:
+        return pd.read_csv(target, sep=None, engine='python')
+    except Exception:
+        if hasattr(target, 'seek') and callable(target.seek):
+            try:
+                target.seek(0)
+            except Exception:
+                pass
+        return pd.read_csv(target)
+
+
+def load_dataset(file_obj_or_path: Union[str, Any]) -> pd.DataFrame:
+    """
+    Safely loads a DataFrame from file path, UploadedFile, Bytes, StringIO, TextIOBase, or raw text.
+    Includes path traversal validation, multi-encoding detection (UTF-8, Big5, CP950), and size boundaries.
+    """
     df = None
-    if isinstance(file_obj_or_path, str):
-        safe_path = validate_safe_path(file_obj_or_path)
-        if safe_path.endswith('.csv'):
-            df = pd.read_csv(safe_path)
-        elif safe_path.endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(safe_path)
-        elif safe_path.endswith('.json'):
-            df = pd.read_json(safe_path)
+
+    # Reset stream pointer if file-like object
+    if hasattr(file_obj_or_path, 'seek') and callable(file_obj_or_path.seek):
+        try:
+            file_obj_or_path.seek(0)
+        except Exception:
+            pass
+
+    # 1. Already a pandas DataFrame
+    if isinstance(file_obj_or_path, pd.DataFrame):
+        df = file_obj_or_path.copy()
+
+    # 2. Text stream (io.StringIO or io.TextIOBase)
+    elif isinstance(file_obj_or_path, io.TextIOBase):
+        df = _read_csv_smart(file_obj_or_path)
+
+    # 3. Raw string: could be a local file path OR raw CSV/text content
+    elif isinstance(file_obj_or_path, str):
+        # Check if it's raw tabular text (contains newline, or commas/tabs and is not an existing file path)
+        if ('\n' in file_obj_or_path or '\r' in file_obj_or_path) or (not os.path.exists(file_obj_or_path) and (',' in file_obj_or_path or '\t' in file_obj_or_path)):
+            df = _read_csv_smart(io.StringIO(file_obj_or_path))
         else:
-            df = pd.read_csv(safe_path)
+            safe_path = validate_safe_path(file_obj_or_path)
+            lowered = safe_path.lower()
+            if lowered.endswith(('.xlsx', '.xls')):
+                df = pd.read_excel(safe_path)
+            elif lowered.endswith('.json'):
+                df = pd.read_json(safe_path)
+            else:
+                df = _read_csv_smart(safe_path)
+
+    # 4. Streamlit UploadedFile or file-like object with a name
     elif hasattr(file_obj_or_path, 'name'):
-        # Streamlit UploadedFile object
         if hasattr(file_obj_or_path, 'size') and file_obj_or_path.size > MAX_ALLOWABLE_BYTES:
             raise ValueError(f"Uploaded file exceeds {MAX_ALLOWABLE_BYTES / (1024*1024):.0f}MB limit.")
-        name = file_obj_or_path.name.lower()
-        if name.endswith('.csv'):
-            df = pd.read_csv(file_obj_or_path)
-        elif name.endswith(('.xlsx', '.xls')):
+        name = str(file_obj_or_path.name).lower()
+        if name.endswith(('.xlsx', '.xls')):
             df = pd.read_excel(file_obj_or_path)
         elif name.endswith('.json'):
             df = pd.read_json(file_obj_or_path)
         else:
-            df = pd.read_csv(file_obj_or_path)
+            # Handle multi-encoding CSV (UTF-8, UTF-8-BOM, CP950, Big5, Latin1)
+            raw_bytes = None
+            if hasattr(file_obj_or_path, 'read'):
+                raw_bytes = file_obj_or_path.read()
+                if hasattr(file_obj_or_path, 'seek'):
+                    file_obj_or_path.seek(0)
+            if raw_bytes:
+                decoded_text = None
+                for enc in ['utf-8-sig', 'utf-8', 'cp950', 'big5', 'latin1']:
+                    try:
+                        decoded_text = raw_bytes.decode(enc)
+                        break
+                    except (UnicodeDecodeError, LookupError):
+                        continue
+                if decoded_text is not None:
+                    df = _read_csv_smart(io.StringIO(decoded_text))
+                else:
+                    df = _read_csv_smart(file_obj_or_path)
+            else:
+                df = _read_csv_smart(file_obj_or_path)
+
+    # 5. Raw bytes or bytearray
     elif isinstance(file_obj_or_path, (bytes, bytearray)):
         if len(file_obj_or_path) > MAX_ALLOWABLE_BYTES:
             raise ValueError("Input data stream exceeds allowable size limit.")
-        df = pd.read_csv(io.BytesIO(file_obj_or_path))
-    elif isinstance(file_obj_or_path, pd.DataFrame):
-        df = file_obj_or_path.copy()
+        raw_bytes = bytes(file_obj_or_path)
+        decoded_text = None
+        for enc in ['utf-8-sig', 'utf-8', 'cp950', 'big5', 'latin1']:
+            try:
+                decoded_text = raw_bytes.decode(enc)
+                break
+            except (UnicodeDecodeError, LookupError):
+                continue
+        if decoded_text is not None:
+            df = _read_csv_smart(io.StringIO(decoded_text))
+        else:
+            df = pd.read_csv(io.BytesIO(file_obj_or_path))
+
+    # 6. Any other file-like object with .read()
+    elif hasattr(file_obj_or_path, 'read') and callable(file_obj_or_path.read):
+        try:
+            df = _read_csv_smart(file_obj_or_path)
+        except Exception:
+            if hasattr(file_obj_or_path, 'seek') and callable(file_obj_or_path.seek):
+                try:
+                    file_obj_or_path.seek(0)
+                except Exception:
+                    pass
+            df = pd.read_excel(file_obj_or_path)
+
     else:
         raise ValueError("Unsupported data source format.")
 
