@@ -691,6 +691,8 @@ if has_any_notice and not st.session_state['dismiss_system_notices']:
         summary_chips.append(f"📅 {t('chip_ym', lang, start=data_stats['start_year_month'], end=data_stats['end_year_month'])}")
     elif data_stats['is_year_week_converted']:
         summary_chips.append(f"📅 {t('chip_yw', lang, start=data_stats['start_year_week'], end=data_stats['end_year_week'])}")
+
+    if has_excluded_period and excluded_record is not None:
         unit_str = t("unit_month_incomplete", lang) if data_stats.get('is_year_month_converted') else t("unit_week_incomplete", lang)
         unit_cases = t("unit_cases", lang)
         ex_val_str = f"{excluded_record['y']:,.0f}"
