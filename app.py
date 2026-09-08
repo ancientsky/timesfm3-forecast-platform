@@ -1019,6 +1019,7 @@ with tab1:
         line=dict(color='rgba(255,255,255,0)'),
         hoverinfo="skip",
         showlegend=False,
+        legendgroup="tfm",
         name=t("trace_tfm_ci", lang)
     ))
 
@@ -1030,6 +1031,7 @@ with tab1:
         line=dict(color='rgba(255,255,255,0)'),
         hoverinfo="skip",
         showlegend=False,
+        legendgroup="prophet",
         name=t("trace_prophet_ci", lang)
     ))
 
@@ -1041,6 +1043,7 @@ with tab1:
         line=dict(color='rgba(255,255,255,0)'),
         hoverinfo="skip",
         showlegend=False,
+        legendgroup="arima",
         name=t("trace_arima_ci", lang)
     ))
 
@@ -1051,6 +1054,7 @@ with tab1:
         customdata=cd_tfm,
         mode='lines+markers',
         name=t("trace_tfm_pred", lang),
+        legendgroup="tfm",
         line=dict(color='#1E88E5', width=3.5),
         marker=dict(size=7, color='#1E88E5', symbol='circle'),
         hovertemplate=tfm_hover
@@ -1062,6 +1066,7 @@ with tab1:
         customdata=cd_pro,
         mode='lines+markers',
         name=t("trace_prophet_pred", lang),
+        legendgroup="prophet",
         line=dict(color='#FF9800', width=3.0, dash='dash'),
         marker=dict(size=7, color='#FF9800', symbol='diamond'),
         hovertemplate=pro_hover
@@ -1073,6 +1078,7 @@ with tab1:
         customdata=cd_ari,
         mode='lines+markers',
         name=t("trace_arima_pred", lang),
+        legendgroup="arima",
         line=dict(color='#2E7D32', width=2.8, dash='dashdot'),
         marker=dict(size=7, color='#2E7D32', symbol='triangle-up'),
         hovertemplate=ari_hover
@@ -1148,7 +1154,10 @@ with tab1:
             rangeslider=dict(visible=False),
             type="date"
         ),
-        yaxis_title=f"{target_disp} {t('scale_log_suffix', lang)}" if is_log_scale else str(target_disp),
+        yaxis=dict(
+            title=dict(text=f"{target_disp} {t('scale_log_suffix', lang)}" if is_log_scale else str(target_disp)),
+            autorange=True
+        ),
         hovermode="x unified",
         legend=dict(
             orientation="h",
