@@ -25,6 +25,8 @@ import urllib.parse
 import urllib.request
 import ipaddress
 import socket
+import ssl
+import urllib3
 import requests
 
 MAX_ALLOWABLE_ROWS = 100000
@@ -168,8 +170,22 @@ def fetch_live_csv_data(
     try:
         session = requests.Session()
         session.headers.update(headers)
-        with session.get(url.strip(), timeout=timeout, stream=True) as resp:
+        try:
+            # Try standard secure SSL verification first
+            resp = session.get(url.strip(), timeout=timeout, stream=True, verify=True)
             resp.raise_for_status()
+        except Exception as ssl_err:
+            err_text = str(ssl_err).lower()
+            # If SSL handshake / verification failed (e.g. OpenSSL 3.0 Missing Subject Key Identifier on Taiwan Gov Root CA),
+            # retry with unverified SSL session to accommodate legacy government PKI certificates
+            if any(k in err_text for k in ['ssl', 'certificate', 'verify', 'subject key identifier', 'handshake']):
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                resp = session.get(url.strip(), timeout=timeout, stream=True, verify=False)
+                resp.raise_for_status()
+            else:
+                raise ssl_err
+
+        with resp:
             content_chunks = []
             total_bytes = 0
             for chunk in resp.iter_content(chunk_size=65536):
@@ -182,11 +198,18 @@ def fetch_live_csv_data(
     except Exception as e:
         last_err = e
 
-    # Tier 2: urllib.request fallback
+    # Tier 2: urllib.request fallback with unverified context support
     if raw_bytes is None:
         try:
+            try:
+                ssl_ctx = ssl._create_unverified_context()
+            except AttributeError:
+                ssl_ctx = ssl.create_default_context()
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = ssl.CERT_NONE
+
             req = urllib.request.Request(url.strip(), headers=headers)
-            with urllib.request.urlopen(req, timeout=timeout) as response:
+            with urllib.request.urlopen(req, timeout=timeout, context=ssl_ctx) as response:
                 content_chunks = []
                 total_bytes = 0
                 while True:
