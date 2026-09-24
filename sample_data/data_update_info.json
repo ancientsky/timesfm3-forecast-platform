@@ -1,0 +1,50 @@
+{
+  "last_updated": "2026-09-24 20:10:24",
+  "datasets": {
+    "enterovirus": {
+      "name_zh": "腸病毒每週門急診就診人次",
+      "name_en": "Enterovirus Weekly Outpatient Visits",
+      "updated_at": "2026-09-24 20:10:24",
+      "latest_period": "202639",
+      "latest_value": 0,
+      "records_count": 561,
+      "source": "疾管署 健保門急診就診資料 (CDCWNH01)"
+    },
+    "flu": {
+      "name_zh": "流感/類流感每週門急診就診人次",
+      "name_en": "Flu / ILI Weekly Outpatient Visits",
+      "updated_at": "2026-09-24 20:10:24",
+      "latest_period": "202639",
+      "latest_value": 0,
+      "records_count": 457,
+      "source": "疾管署 健保門急診就診資料 (CDCWNH01)"
+    },
+    "dengue": {
+      "name_zh": "台灣登革熱每週確診統計",
+      "name_en": "Taiwan Dengue Weekly Confirmed Cases",
+      "updated_at": "2026-09-24 20:10:24",
+      "latest_period": "202639",
+      "latest_value": 0,
+      "records_count": 196,
+      "source": "疾管署 法定傳染病確定病例 (061)"
+    },
+    "scrub_typhus": {
+      "name_zh": "恙蟲病確定病例發病月趨勢圖",
+      "name_en": "Scrub Typhus Monthly Confirmed Cases",
+      "updated_at": "2026-09-24 20:10:24",
+      "latest_period": "202609",
+      "latest_value": 1,
+      "records_count": 321,
+      "source": "疾管署 法定傳染病確定病例 (0812)"
+    },
+    "covid": {
+      "name_zh": "COVID-19 每日新增本土病例",
+      "name_en": "COVID-19 Daily Confirmed Cases",
+      "updated_at": "2026-09-24 20:10:24",
+      "latest_period": "20260924",
+      "latest_value": 0,
+      "records_count": 754,
+      "source": "疾管署 法定傳染病確定病例 (19SC)"
+    }
+  }
+}
