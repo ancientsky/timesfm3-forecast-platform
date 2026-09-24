@@ -430,6 +430,30 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "zh": "3. 在 Streamlit Cloud 應用畫面點擊右下角 **Manage app**（或上方選單 **⋮ ➔ Settings ➔ Secrets**），貼上下列格式並儲存：",
         "en": "3. In Streamlit Cloud, click **Manage app** (or **⋮ ➔ Settings ➔ Secrets**), paste the following and click Save:"
     },
+    "data_update_time_label": {
+        "zh": "資料更新時間",
+        "en": "Data Updated At"
+    },
+    "data_source_meta_label": {
+        "zh": "資料來源",
+        "en": "Data Source"
+    },
+    "data_records_meta_label": {
+        "zh": "總觀測筆數",
+        "en": "Total Observations"
+    },
+    "chip_updated": {
+        "zh": "資料更新: {time}",
+        "en": "Updated: {time}"
+    },
+    "info_update_title": {
+        "zh": "資料同步狀態",
+        "en": "Data Synchronization Status"
+    },
+    "info_update_body": {
+        "zh": "本時序資料由本機端每日中午自動爬蟲同步，最近更新時間為 **{time}**，資料來源：**{src}**。",
+        "en": "This dataset is automatically crawled and synced daily. Last updated at **{time}**, source: **{src}**."
+    },
 
     # ---------------- Overview Cards & Dynamic Steps ----------------
     "ov_training_steps": { "zh": "建模使用期數", "en": "Training Steps" },

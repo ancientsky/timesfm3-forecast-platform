@@ -25,6 +25,8 @@ import plotly.graph_objects as go
 import os
 import io
 import html
+import json
+import datetime
 import importlib
 import utils.data_processor
 importlib.reload(utils.data_processor)
@@ -208,6 +210,19 @@ def get_cached_live_csv(url: str, fallback_path: str = None):
     return fetch_live_csv_data(url, timeout=12, fallback_path=fallback_path)
 
 
+def get_data_update_info():
+    """Reads latest crawler update timestamps and metadata for epidemic datasets."""
+    info_path = os.path.join(os.path.dirname(__file__), "sample_data", "data_update_info.json")
+    if os.path.exists(info_path):
+        try:
+            with open(info_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return None
+
+
+
 @st.cache_resource(show_spinner=False)
 def get_timesfm_model():
     """Cached singleton for Google TimesFM 3.0 model."""
@@ -297,6 +312,14 @@ if selected_ds_key in sample_map:
     file_path = sample_map[selected_ds_key]
     if os.path.exists(file_path):
         raw_df = load_dataset(file_path)
+        update_info = get_data_update_info()
+        ds_info = update_info.get("datasets", {}).get(selected_ds_key) if update_info else None
+        if ds_info and ds_info.get("updated_at"):
+            st.sidebar.caption(f"🕒 **{t('data_update_time_label', lang)}**：`{ds_info['updated_at']}`")
+        else:
+            mtime_str = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M')
+            st.sidebar.caption(f"🕒 **{t('data_update_time_label', lang)}**：`{mtime_str}`")
+
 elif selected_ds_key == "cbc_forex":
     cbc_url = "https://www.cbc.gov.tw/public/data/OpenData/%E5%A4%96%E5%8C%AF%E5%B1%80/FTDOpenData015.csv"
     fallback_file = "sample_data/ntd_usd_daily.csv"
@@ -702,9 +725,19 @@ if has_any_notice and not st.session_state['dismiss_system_notices']:
         ex_val_str = f"{excluded_record['y']:,.0f}"
         summary_chips.append(f"🛡️ {t('chip_excluded', lang, unit=unit_str, label=ex_label, val=ex_val_str, cases=unit_cases)}")
 
+    update_info = get_data_update_info()
+    ds_info = update_info.get("datasets", {}).get(selected_ds_key) if update_info else None
+    if ds_info and ds_info.get("updated_at"):
+        summary_chips.append(f"🕒 {t('chip_updated', lang, time=ds_info['updated_at'])}")
+
     chip_desc = " ｜ ".join(summary_chips)
 
     with st.expander(f"ℹ️ {t('notices_expander_title', lang)} ({chip_desc})", expanded=False):
+        if ds_info:
+            st.info(
+                f"🕒 **{t('info_update_title', lang)}**：{t('info_update_body', lang, time=ds_info.get('updated_at', ''), src=ds_info.get('source', '疾管署'))}"
+            )
+
         if data_stats.get('is_year_month_converted'):
             safe_col = html.escape(str(date_col_disp))
             st.info(
@@ -1537,6 +1570,16 @@ with tab3:
 
 with tab4:
     st.markdown(f"### 📋 {t('tab4_header', lang, horizon=horizon)}")
+
+    update_info = get_data_update_info()
+    ds_info = update_info.get("datasets", {}).get(selected_ds_key) if update_info else None
+    if ds_info:
+        st.caption(
+            f"🕒 **{t('data_update_time_label', lang)}**：`{ds_info.get('updated_at')}` ｜ "
+            f"**{t('data_source_meta_label', lang)}**：`{ds_info.get('source')}` ｜ "
+            f"**{t('data_records_meta_label', lang)}**：`{ds_info.get('records_count', len(clean_df))} {t('unit_periods', lang)}`"
+        )
+
 
     date_col_title = (
         t("col_pred_month_start", lang)

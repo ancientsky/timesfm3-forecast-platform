@@ -44,3 +44,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Local data crawler & automation scripts (never committed or pushed to GitHub)
+crawlers/
+*.log
