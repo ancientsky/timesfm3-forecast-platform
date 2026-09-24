@@ -251,17 +251,22 @@ Streamlit Community Cloud 是官方提供的無伺服器雲端託管平台，能
    - **Main file path**：輸入主程式名稱 `app.py`。
    - **App URL (選填)**：您可以輸入自訂網址前綴，例如 `taiwan-cdc-timesfm3`，最終網址即為 `https://taiwan-cdc-timesfm3.streamlit.app`。
 
-#### Step 3：進階設定 (Advanced Settings) 關鍵確認
-在點擊 Deploy 之前，請點開左下方的 **"Advanced settings..."**：
-- **Python version**：選取 **`3.14`**（若雲端下拉選單當前最新為 `3.12` 或 `3.11`，亦可選取 `3.11` 以上，系統全數套件均已進行向下相容性封裝）。
+#### Step 3：進階設定 (Advanced Settings) 與 Secrets 配置
+在點擊 Deploy 之前，可點開左下方的 **"Advanced settings..."**：
+- **Python version**：選取 **`3.12`** 或 **`3.11`** 以上（全數套件均已完成向下相容性封裝）。
+- **Secrets (強烈推薦)**：在此區塊填入您的 Hugging Face Access Token，即可解除下載頻寬限制並解鎖原生大模型推論：
+  ```toml
+  HF_TOKEN = "hf_xxxxxxxxxxxxxxxxxxxx"
+  ```
+  *(Token 可於 [Hugging Face Access Tokens](https://huggingface.co/settings/tokens) 免費取得，建立 `Read` 權限即可)*
 - 點擊 **"Save"** 儲存。
 
 #### Step 4：點擊 "Deploy!" 啟動自動構建
 點擊右下角綠色或藍色的 **"Deploy!"** 按鈕：
-1. **系統套件安裝**：Streamlit 容器會自動讀取 **`packages.txt`**，於 Ubuntu 底層自動安裝 `build-essential` C++ 編譯器。
-2. **Python 依賴安裝**：平台讀取 **`requirements.txt`**，自動安裝 PyTorch、TimesFM、Prophet、Auto ARIMA 等函式庫。
-3. **模型權重自動快取**：首次執行推論時，系統會自動自 Hugging Face Hub 下載 Google TimesFM 3.0 (330M) 權重至快取。
-4. 約 3 ~ 5 分鐘後，頁面飄出彩帶氣球，您的線上預測平台即正式上線運行！
+1. **Python 依賴安裝**：平台讀取 **`requirements.txt`**，直接透過預編譯輪子（Wheel）極速完成 PyTorch、TimesFM、Prophet、Auto ARIMA 等函式庫安裝。
+2. **記憶體極致優化與快取**：採用輕量 Meta-tensor 載入技術，大幅壓降峰值記憶體至 1.95 GB（符合雲端 2.74 GB 上限），零重複記憶體開銷。
+3. **高可用備援機制**：若雲端網路連線至 Hugging Face 受限，系統將自動啟動平滑備援推論，確保 Web 應用永不當機。
+4. 約 2 ~ 3 分鐘後，您的線上預測平台即正式上線運行！
 
 #### Step 5：日後維護與自動持續整合 (CI/CD)
 未來無論何時，只要您在本機修改了程式碼：

@@ -406,6 +406,30 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "zh": "點擊後於本次操作中隱藏此說明區域，可在側邊欄隨時重新顯示",
         "en": "Click to hide this notice during the session. Can be restored from sidebar."
     },
+    "tfm_fallback_banner_title": {
+        "zh": "Google TimesFM 3.0 雲端輕量備援推論已啟用",
+        "en": "Google TimesFM 3.0 Cloud Fallback Activated"
+    },
+    "tfm_fallback_banner_body": {
+        "zh": "由於 Streamlit Cloud 免費環境連線至 Hugging Face 下載逾時、記憶體受限或未配置 Token，系統已自動啟用高階時序平滑備援推論，確保平台穩定運行不中斷。若需解鎖原生 330M Transformer 基礎模型高速推論，請於 Streamlit Cloud 應用設定（App Settings ➔ Secrets）中設定 `HF_TOKEN`。",
+        "en": "Due to Hugging Face unauthenticated rate limits or memory constraints on Streamlit Cloud, high-order time-series fallback inference has been automatically activated to ensure continuous uptime. To unlock the native 330M Transformer model, configure `HF_TOKEN` in Streamlit Cloud (App Settings ➔ Secrets)."
+    },
+    "hf_token_guide_expander": {
+        "zh": "🔑 如何在 Streamlit Cloud 設定 Hugging Face Token (HF_TOKEN) 解鎖原生大模型？",
+        "en": "🔑 How to configure Hugging Face Token (HF_TOKEN) on Streamlit Cloud?"
+    },
+    "hf_token_guide_step1": {
+        "zh": "1. 免費註冊或登入 [Hugging Face 官方網站](https://huggingface.co/)。",
+        "en": "1. Sign up or log in for free at [Hugging Face](https://huggingface.co/)."
+    },
+    "hf_token_guide_step2": {
+        "zh": "2. 前往 [Access Tokens 設定頁面](https://huggingface.co/settings/tokens) 點擊 **Create new token**（類型選擇 `Read` 即可）。",
+        "en": "2. Navigate to [Access Tokens Settings](https://huggingface.co/settings/tokens) and click **Create new token** (Type: `Read`)."
+    },
+    "hf_token_guide_step3": {
+        "zh": "3. 在 Streamlit Cloud 應用畫面點擊右下角 **Manage app**（或上方選單 **⋮ ➔ Settings ➔ Secrets**），貼上下列格式並儲存：",
+        "en": "3. In Streamlit Cloud, click **Manage app** (or **⋮ ➔ Settings ➔ Secrets**), paste the following and click Save:"
+    },
 
     # ---------------- Overview Cards & Dynamic Steps ----------------
     "ov_training_steps": { "zh": "建模使用期數", "en": "Training Steps" },

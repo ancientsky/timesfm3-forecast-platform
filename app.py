@@ -58,8 +58,12 @@ from utils.data_processor import (
 )
 from utils.metrics import compute_forecast_metrics
 from models.prophet_wrapper import ProphetForecasterWrapper
-from models.timesfm_wrapper import TimesFMWrapper
+from models.timesfm_wrapper import TimesFMWrapper, get_hf_token
 from models.arima_wrapper import AutoARIMAForecasterWrapper
+
+# Initialize HF_TOKEN from secrets or environment as early as possible
+_ = get_hf_token()
+
 
 # Page Config
 st.set_page_config(
@@ -913,6 +917,22 @@ if is_backtesting and ground_truth_df is not None:
         ci_lower=res_arima['ci_lower'],
         ci_upper=res_arima['ci_upper']
     )
+
+
+# TimesFM Fallback Banner & HF_TOKEN Setup Guide (if fallback active)
+if res_tfm.get('is_fallback'):
+    st.info(
+        f"💡 **{t('tfm_fallback_banner_title', lang)}**\n\n"
+        f"{t('tfm_fallback_banner_body', lang)}",
+        icon="ℹ️"
+    )
+    with st.expander(t("hf_token_guide_expander", lang), expanded=False):
+        st.markdown(
+            f"{t('hf_token_guide_step1', lang)}\n\n"
+            f"{t('hf_token_guide_step2', lang)}\n\n"
+            f"{t('hf_token_guide_step3', lang)}\n\n"
+            f"```toml\nHF_TOKEN = \"hf_xxxxxxxxxxxxxxxxxxxx\"\n```"
+        )
 
 
 # ---------------- DASHBOARD TABS ----------------
