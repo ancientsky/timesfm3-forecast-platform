@@ -746,6 +746,12 @@ def prepare_epidemic_data(
     clean_df['y'] = clean_df['y'].interpolate(method='linear').bfill().ffill()
     clean_df['y'] = np.maximum(clean_df['y'].values, 0.0)
 
+    # 健保門急診就診資料特殊防護：若末尾數值為 0（因健保更新時間為週一至週三，新週尚未匯入），自動剔除未更新之 0 值
+    if is_yw and (date_col in ("就診年週", "年週") or target_col in ("全國", "就診人次", "門急診就診人次")):
+        while len(clean_df) > 0 and clean_df['y'].iloc[-1] == 0:
+            clean_df = clean_df.iloc[:-1].reset_index(drop=True)
+
+
     if override_freq is not None:
         inferred_freq = override_freq
     elif is_ym:

@@ -48,24 +48,24 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
     # ---------------- Dataset Presets ----------------
     "ds_enterovirus": {
-        "zh": "👶 腸病毒每週門急診就診人次 (週資料 201601~202635)",
-        "en": "👶 Enterovirus Weekly Outpatient Visits (Weekly 201601~202635)"
+        "zh": "👶 腸病毒每週門急診就診人次 (週資料 201601起)",
+        "en": "👶 Enterovirus Weekly Outpatient Visits (Weekly from 201601)"
     },
     "ds_dengue": {
-        "zh": "🦟 台灣登革熱每週確診統計 (發病年週 202301~202636)",
-        "en": "🦟 Taiwan Dengue Weekly Confirmed Cases (EpiWeek 202301~202636)"
+        "zh": "🦟 台灣登革熱每週確診統計 (發病年週 202301起)",
+        "en": "🦟 Taiwan Dengue Weekly Confirmed Cases (EpiWeek from 202301)"
     },
     "ds_scrub_typhus": {
-        "zh": "🦗 恙蟲病確定病例發病月趨勢圖 (月資料 200001~202612)",
-        "en": "🦗 Scrub Typhus Monthly Confirmed Cases (Monthly 200001~202612)"
+        "zh": "🦗 恙蟲病確定病例發病月趨勢圖 (月資料 200001起)",
+        "en": "🦗 Scrub Typhus Monthly Confirmed Cases (Monthly from 200001)"
     },
     "ds_covid": {
-        "zh": "😷 COVID-19 每日新增本土病例 (日資料 20240901~20260904)",
-        "en": "😷 COVID-19 Daily Domestic Confirmed Cases (Daily 20240901~20260904)"
+        "zh": "😷 COVID-19 每日新增本土病例 (日資料 20240901起)",
+        "en": "😷 COVID-19 Daily Domestic Confirmed Cases (Daily from 20240901)"
     },
     "ds_flu": {
-        "zh": "🌡️ 流感/類流感每週門急診就診人次 (週資料 201801~202635)",
-        "en": "🌡️ Influenza/ILI Weekly Outpatient Visits (Weekly 201801~202635)"
+        "zh": "🌡️ 流感/類流感每週門急診就診人次 (週資料 201801起)",
+        "en": "🌡️ Influenza/ILI Weekly Outpatient Visits (Weekly from 201801)"
     },
     "ds_cbc_forex": {
         "zh": "💵 銀行間市場新台幣對美元收盤匯率 (日資料 央行即時連線)",

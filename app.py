@@ -312,6 +312,12 @@ if selected_ds_key in sample_map:
     file_path = sample_map[selected_ds_key]
     if os.path.exists(file_path):
         raw_df = load_dataset(file_path)
+        # 腸病毒與流感就診人次：若末尾資料點為 0（健保更新時段為週一至週三，新週尚未匯入），自動剔除未更新之 0 值
+        if selected_ds_key in ("enterovirus", "flu") and raw_df is not None and len(raw_df) > 0:
+            val_col = "全國" if "全國" in raw_df.columns else raw_df.columns[-1]
+            while len(raw_df) > 0 and (pd.to_numeric(raw_df[val_col].iloc[-1], errors='coerce') == 0 or pd.isna(raw_df[val_col].iloc[-1])):
+                raw_df = raw_df.iloc[:-1].reset_index(drop=True)
+
         update_info = get_data_update_info()
         ds_info = update_info.get("datasets", {}).get(selected_ds_key) if update_info else None
         if ds_info and ds_info.get("updated_at"):
@@ -319,6 +325,7 @@ if selected_ds_key in sample_map:
         else:
             mtime_str = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M')
             st.sidebar.caption(f"🕒 **{t('data_update_time_label', lang)}**：`{mtime_str}`")
+
 
 elif selected_ds_key == "cbc_forex":
     cbc_url = "https://www.cbc.gov.tw/public/data/OpenData/%E5%A4%96%E5%8C%AF%E5%B1%80/FTDOpenData015.csv"
