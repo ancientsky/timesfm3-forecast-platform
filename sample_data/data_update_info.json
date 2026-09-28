@@ -1,37 +1,37 @@
 {
-  "last_updated": "2026-09-27 12:00:01",
+  "last_updated": "2026-09-28 12:00:01",
   "datasets": {
     "enterovirus": {
       "name_zh": "腸病毒每週門急診就診人次",
       "name_en": "Enterovirus Weekly Outpatient Visits",
-      "updated_at": "2026-09-27 12:00:01",
-      "latest_period": "202637",
-      "latest_value": 10359,
-      "records_count": 559,
+      "updated_at": "2026-09-28 12:00:01",
+      "latest_period": "202638",
+      "latest_value": 9811,
+      "records_count": 560,
       "source": "疾管署 健保門急診就診資料 (CDCWNH01)"
     },
     "flu": {
       "name_zh": "流感/類流感每週門急診就診人次",
       "name_en": "Flu / ILI Weekly Outpatient Visits",
-      "updated_at": "2026-09-27 12:00:01",
-      "latest_period": "202637",
-      "latest_value": 136715,
-      "records_count": 455,
+      "updated_at": "2026-09-28 12:00:01",
+      "latest_period": "202638",
+      "latest_value": 132019,
+      "records_count": 456,
       "source": "疾管署 健保門急診就診資料 (CDCWNH01)"
     },
     "dengue": {
       "name_zh": "台灣登革熱每週確診統計",
       "name_en": "Taiwan Dengue Weekly Confirmed Cases",
-      "updated_at": "2026-09-27 12:00:01",
-      "latest_period": "202639",
+      "updated_at": "2026-09-28 12:00:01",
+      "latest_period": "202640",
       "latest_value": 0,
-      "records_count": 196,
+      "records_count": 197,
       "source": "疾管署 法定傳染病確定病例 (061)"
     },
     "scrub_typhus": {
       "name_zh": "恙蟲病確定病例發病月趨勢圖",
       "name_en": "Scrub Typhus Monthly Confirmed Cases",
-      "updated_at": "2026-09-27 12:00:01",
+      "updated_at": "2026-09-28 12:00:01",
       "latest_period": "202609",
       "latest_value": 2,
       "records_count": 321,
@@ -40,10 +40,10 @@
     "covid": {
       "name_zh": "COVID-19 每日新增本土病例",
       "name_en": "COVID-19 Daily Confirmed Cases",
-      "updated_at": "2026-09-27 12:00:01",
-      "latest_period": "20260927",
+      "updated_at": "2026-09-28 12:00:01",
+      "latest_period": "20260928",
       "latest_value": 0,
-      "records_count": 757,
+      "records_count": 758,
       "source": "疾管署 法定傳染病確定病例 (19SC)"
     }
   }
