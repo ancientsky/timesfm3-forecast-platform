@@ -48,3 +48,6 @@ Thumbs.db
 # Local data crawler & automation scripts (never committed or pushed to GitHub)
 crawlers/
 *.log
+GEMINI.md
+.agent/
+
