@@ -1,10 +1,10 @@
 {
-  "last_updated": "2026-10-07 12:00:02",
+  "last_updated": "2026-10-08 12:00:02",
   "datasets": {
     "enterovirus": {
       "name_zh": "腸病毒每週門急診就診人次",
       "name_en": "Enterovirus Weekly Outpatient Visits",
-      "updated_at": "2026-10-07 12:00:02",
+      "updated_at": "2026-10-08 12:00:02",
       "latest_period": "202639",
       "latest_value": 10118,
       "records_count": 561,
@@ -13,7 +13,7 @@
     "flu": {
       "name_zh": "流感/類流感每週門急診就診人次",
       "name_en": "Flu / ILI Weekly Outpatient Visits",
-      "updated_at": "2026-10-07 12:00:02",
+      "updated_at": "2026-10-08 12:00:02",
       "latest_period": "202639",
       "latest_value": 134571,
       "records_count": 457,
@@ -22,7 +22,7 @@
     "dengue": {
       "name_zh": "台灣登革熱每週確診統計",
       "name_en": "Taiwan Dengue Weekly Confirmed Cases",
-      "updated_at": "2026-10-07 12:00:02",
+      "updated_at": "2026-10-08 12:00:02",
       "latest_period": "202641",
       "latest_value": 0,
       "records_count": 198,
@@ -31,7 +31,7 @@
     "scrub_typhus": {
       "name_zh": "恙蟲病確定病例發病月趨勢圖",
       "name_en": "Scrub Typhus Monthly Confirmed Cases",
-      "updated_at": "2026-10-07 12:00:02",
+      "updated_at": "2026-10-08 12:00:02",
       "latest_period": "202610",
       "latest_value": 0,
       "records_count": 322,
@@ -40,10 +40,10 @@
     "covid": {
       "name_zh": "COVID-19 每日新增本土病例",
       "name_en": "COVID-19 Daily Confirmed Cases",
-      "updated_at": "2026-10-07 12:00:02",
-      "latest_period": "20261007",
+      "updated_at": "2026-10-08 12:00:02",
+      "latest_period": "20261008",
       "latest_value": 0,
-      "records_count": 767,
+      "records_count": 768,
       "source": "疾管署 法定傳染病確定病例 (19SC)"
     }
   }
